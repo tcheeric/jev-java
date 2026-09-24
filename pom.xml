@@ -48,9 +48,15 @@
                 <artifactId>jev-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!--
+              The standalone (shaded) artifact rather than the plain one: imani-bom manages
+              Jetty to 12, WireMock 3.9.2 needs Jetty 11, and the import wins on the
+              transitive dependency, leaving the stub server unable to start. The shaded jar
+              carries its own Jetty and so is immune to that management.
+            -->
             <dependency>
                 <groupId>org.wiremock</groupId>
-                <artifactId>wiremock</artifactId>
+                <artifactId>wiremock-standalone</artifactId>
                 <version>${wiremock.version}</version>
                 <scope>test</scope>
             </dependency>
