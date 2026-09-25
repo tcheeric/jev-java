@@ -191,7 +191,13 @@ mvn install -DskipTests
   runs with doclint and `failOnWarnings`, so a broken `{@link}` or bad HTML fails
   `mvn verify`, not the release. Public types need a Javadoc comment that says
   why, not what.
-- First published: `0.1.0-SNAPSHOT`, 25 September 2026.
+- To release: set `<revision>` to `X.Y.Z`, move `[Unreleased]` in
+  `CHANGELOG.md` under `## [X.Y.Z] - date`, run `mvn clean verify` (with a key,
+  so the live tests run), `mvn deploy -DskipTests`, then commit
+  `chore(release): X.Y.Z` and tag `vX.Y.Z`. Then set `<revision>` to the next
+  `-SNAPSHOT` and commit that too. A release version is never redeployed: the
+  releases repository refuses overwrites, and consumers cache it forever.
+- First release: `0.1.0`, 25 September 2026.
 
 ## Design background
 

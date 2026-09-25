@@ -38,18 +38,17 @@ try (JevClient jev = new JevClient(JevConfig.of(System.getenv("TYPESAFE_API_KEY"
 
 ## Status
 
-`0.1.0-SNAPSHOT`. It speaks the published API and is tested against the live
-service. Snapshots, with sources and javadoc jars, are published to
-`https://maven.398ja.xyz/snapshots`. There is no release yet. The public types
-changed incompatibly in `0b5e099`. See [CHANGELOG.md](CHANGELOG.md).
+Latest release: **`0.1.0`**. It speaks the published API and is tested
+against the live service. Releases, with sources and javadoc jars, are published
+to `https://maven.398ja.xyz/releases`, and snapshots of the next version to
+`/snapshots`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Getting it
 
 ```xml
 <repository>
-    <id>reposilite-snapshots</id>
-    <url>https://maven.398ja.xyz/snapshots</url>
-    <snapshots><enabled>true</enabled></snapshots>
+    <id>reposilite-releases</id>
+    <url>https://maven.398ja.xyz/releases</url>
 </repository>
 ```
 
@@ -61,7 +60,7 @@ changed incompatibly in `0b5e099`. See [CHANGELOG.md](CHANGELOG.md).
 </dependency>
 ```
 
-Define `jev-client.version` as a property in your parent pom. The only runtime
+Define `jev-client.version` as a property in your parent pom, set to `0.1.0`. The only runtime
 dependency is Jackson databind 2.10 or later. Or build it yourself with
 `mvn install -DskipTests`.
 
@@ -73,7 +72,7 @@ dependency is Jackson databind 2.10 or later. Or build it yourself with
 | [Developer guide](docs/dev-guide.md) | Changing this library: build, tests, live tests, the rules the code keeps |
 | [WIRE.md](WIRE.md) | The HTTP wire format, and which parts are documented, observed live, or inferred |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and how to migrate |
-| [Javadoc](https://maven.398ja.xyz/snapshots/xyz/tcheeric/jev-client/0.1.0-SNAPSHOT/) | The API reference, as the `-javadoc.jar` beside each published jar. Your IDE downloads and shows it. `mvn -pl jev-client javadoc:javadoc` builds it locally into `jev-client/target/reports/apidocs/` |
+| [Javadoc](https://maven.398ja.xyz/releases/xyz/tcheeric/jev-client/0.1.0/) | The API reference, as the `-javadoc.jar` beside each published jar. Your IDE downloads and shows it. `mvn -pl jev-client javadoc:javadoc` builds it locally into `jev-client/target/reports/apidocs/` |
 | [jev-examples/](jev-examples/README.md) | Runnable programs, tested on every build |
 | [SECURITY.md](SECURITY.md) | Where your data goes, handling the key, reporting a vulnerability |
 | [TypeSafe docs](https://docs.typesafe.ai) | The evaluator itself: how to write good questions, confidence, limits |
