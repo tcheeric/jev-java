@@ -20,7 +20,7 @@ import java.util.Map;
  * this class, where a test can assert them and a diff shows when they change.</p>
  *
  * <pre>
- * mvn -q -pl examples exec:java -Dexample=Triage -Dexec.args="My payouts have failed for 3 days!"
+ * mvn -q -pl jev-examples exec:java -Dexample=Triage -Dexec.args="My payouts have failed for 3 days!"
  * </pre>
  */
 public final class Triage {

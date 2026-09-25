@@ -74,7 +74,7 @@ dependency is Jackson databind 2.10 or later. Or build it yourself with
 | [WIRE.md](WIRE.md) | The HTTP wire format, and which parts are documented, observed live, or inferred |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and how to migrate |
 | [Javadoc](https://maven.398ja.xyz/snapshots/xyz/tcheeric/jev-client/0.1.0-SNAPSHOT/) | The API reference, as the `-javadoc.jar` beside each published jar. Your IDE downloads and shows it. `mvn -pl jev-client javadoc:javadoc` builds it locally into `jev-client/target/reports/apidocs/` |
-| [examples/](examples/README.md) | Runnable programs, tested on every build |
+| [jev-examples/](jev-examples/README.md) | Runnable programs, tested on every build |
 | [SECURITY.md](SECURITY.md) | Where your data goes, handling the key, reporting a vulnerability |
 | [TypeSafe docs](https://docs.typesafe.ai) | The evaluator itself: how to write good questions, confidence, limits |
 
@@ -83,7 +83,7 @@ dependency is Jackson databind 2.10 or later. Or build it yourself with
 ```
 jev-client/      the library (xyz.tcheeric.jev)
 jev-client-it/   integration tests: a WireMock stub server, and the live API
-examples/        runnable examples, tested against a stub on every build
+jev-examples/    runnable examples, tested against a stub on every build
 WIRE.md          the wire format
 docs/            user and developer guides
 ```

@@ -17,9 +17,9 @@ They call the real API, which costs a little. From the repository root:
 mvn -q install -DskipTests                  # once, so the examples can find jev-client
 
 export TYPESAFE_API_KEY=...                 # or TYPESAFE_API_KEY_FILE=/path/to/key
-mvn -q -pl examples exec:java                                   # Triage, default message
-mvn -q -pl examples exec:java -Dexec.args="The export button crashes the app"
-mvn -q -pl examples exec:java -Dexample=QuestionTypes
+mvn -q -pl jev-examples exec:java                               # Triage, default message
+mvn -q -pl jev-examples exec:java -Dexec.args="The export button crashes the app"
+mvn -q -pl jev-examples exec:java -Dexample=QuestionTypes
 ```
 
 In this repository, `set -a; . ./.env; set +a` loads the key file setting.

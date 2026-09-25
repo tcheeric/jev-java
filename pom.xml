@@ -22,7 +22,7 @@
     <modules>
         <module>jev-client</module>
         <module>jev-client-it</module>
-        <module>examples</module>
+        <module>jev-examples</module>
     </modules>
 
     <properties>

@@ -15,7 +15,7 @@ import java.util.Map;
  * decision, so you can see what Jev returns before deciding what to do with it.
  *
  * <pre>
- * mvn -q -pl examples exec:java -Dexample=QuestionTypes
+ * mvn -q -pl jev-examples exec:java -Dexample=QuestionTypes
  * </pre>
  */
 public final class QuestionTypes {

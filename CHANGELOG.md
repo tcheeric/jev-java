@@ -43,7 +43,7 @@ levels are evenly spaced.
   `TYPESAFE_API_KEY_FILE` is set.
 
 - Sources and javadoc jars, published with the snapshot to `maven.398ja.xyz`.
-- `examples/` module (`Triage`, `QuestionTypes`), tested against a stub on every build.
+- `jev-examples/` module (`Triage`, `QuestionTypes`), tested against a stub on every build.
 - MIT licence and `SECURITY.md`.
 
 ### Fixed

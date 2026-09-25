@@ -44,7 +44,7 @@ jev-client-it/                integration tests only, no main code
   JevClientIT                 client over HTTP against a WireMock stub
   JevClientRetryIT            backoff and retry-after timing, measured on the stub
   JevLiveIT                   the real API, when a key is available
-examples/                     runnable examples. ExamplesIT runs them against a stub
+jev-examples/                 runnable examples. ExamplesIT runs them against a stub
 WIRE.md                       the wire format, and how sure we are of each part
 ```
 
@@ -149,9 +149,9 @@ git grep -F "$(cat secrets/typesafe-api-key)" && echo LEAK
 
 ### A new example
 
-Put it in `examples/src/main/java/xyz/tcheeric/jev/examples/` with a `main`, add a
+Put it in `jev-examples/src/main/java/xyz/tcheeric/jev/examples/` with a `main`, add a
 case to `ExamplesIT` against the stub (including a failure path), and list it in
-`examples/README.md`. Run it live once before committing.
+`jev-examples/README.md`. Run it live once before committing.
 
 ### A new question or answer type
 
@@ -186,7 +186,7 @@ mvn install -DskipTests
   Credentials (server ids `reposilite-releases` and `reposilite-snapshots`) go
   in `~/.m2/settings.xml`, never in the repository.
 - Only `jev-client` and the parent pom are deployed. `jev-client-it` and
-  `examples` set `maven.deploy.skip`.
+  `jev-examples` set `maven.deploy.skip`.
 - Every `jev-client` build attaches `-sources.jar` and `-javadoc.jar`. Javadoc
   runs with doclint and `failOnWarnings`, so a broken `{@link}` or bad HTML fails
   `mvn verify`, not the release. Public types need a Javadoc comment that says
