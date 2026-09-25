@@ -39,15 +39,18 @@ try (JevClient jev = new JevClient(JevConfig.of(System.getenv("TYPESAFE_API_KEY"
 ## Status
 
 `0.1.0-SNAPSHOT`. It speaks the published API and is tested against the live
-service. It is **not yet published** to a Maven repository, so for now you
-install it locally (see below). The public types changed incompatibly in
-`0b5e099`. See [CHANGELOG.md](CHANGELOG.md).
+service. Snapshots, with sources and javadoc jars, are published to
+`https://maven.398ja.xyz/snapshots`. There is no release yet. The public types
+changed incompatibly in `0b5e099`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Getting it
 
-```sh
-git clone <this repository> && cd jev-java
-mvn install -DskipTests
+```xml
+<repository>
+    <id>reposilite-snapshots</id>
+    <url>https://maven.398ja.xyz/snapshots</url>
+    <snapshots><enabled>true</enabled></snapshots>
+</repository>
 ```
 
 ```xml
@@ -58,8 +61,9 @@ mvn install -DskipTests
 </dependency>
 ```
 
-Define `jev-client.version` as a property in your parent pom. The only
-runtime dependency is Jackson.
+Define `jev-client.version` as a property in your parent pom. The only runtime
+dependency is Jackson databind 2.10 or later. Or build it yourself with
+`mvn install -DskipTests`.
 
 ## Documentation
 
@@ -69,6 +73,9 @@ runtime dependency is Jackson.
 | [Developer guide](docs/dev-guide.md) | Changing this library: build, tests, live tests, the rules the code keeps |
 | [WIRE.md](WIRE.md) | The HTTP wire format, and which parts are documented, observed live, or inferred |
 | [CHANGELOG.md](CHANGELOG.md) | What changed, and how to migrate |
+| [Javadoc](https://maven.398ja.xyz/snapshots/xyz/tcheeric/jev-client/0.1.0-SNAPSHOT/) | The API reference, as the `-javadoc.jar` beside each published jar. Your IDE downloads and shows it. `mvn -pl jev-client javadoc:javadoc` builds it locally into `jev-client/target/reports/apidocs/` |
+| [examples/](examples/README.md) | Runnable programs, tested on every build |
+| [SECURITY.md](SECURITY.md) | Where your data goes, handling the key, reporting a vulnerability |
 | [TypeSafe docs](https://docs.typesafe.ai) | The evaluator itself: how to write good questions, confidence, limits |
 
 ## Layout
@@ -76,10 +83,11 @@ runtime dependency is Jackson.
 ```
 jev-client/      the library (xyz.tcheeric.jev)
 jev-client-it/   integration tests: a WireMock stub server, and the live API
+examples/        runnable examples, tested against a stub on every build
 WIRE.md          the wire format
 docs/            user and developer guides
 ```
 
 ## Licence
 
-No licence has been chosen yet. Until one is, this is not open for reuse.
+[MIT](LICENSE).

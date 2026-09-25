@@ -21,6 +21,8 @@ first time (it hosts `imani-bom`, which manages every external version).
 | `mvn -q test` | unit tests (`*Test.java`). No network, no files, no sleeps. **Must pass before every commit.** |
 | `mvn -q verify` | the unit tests, plus the integration tests (`*IT.java`) under failsafe |
 | `mvn install -DskipTests` | installs the jar locally for a consumer such as imani-support-agent |
+| `mvn -pl jev-client javadoc:javadoc` | the API reference, into `jev-client/target/reports/apidocs/` |
+| `mvn deploy -DskipTests` | publishes jev-client with its sources and javadoc jars. See [Releases](#commits-and-releases) |
 
 Add `-o` to work offline once the dependencies are cached.
 
@@ -42,6 +44,7 @@ jev-client-it/                integration tests only, no main code
   JevClientIT                 client over HTTP against a WireMock stub
   JevClientRetryIT            backoff and retry-after timing, measured on the stub
   JevLiveIT                   the real API, when a key is available
+examples/                     runnable examples. ExamplesIT runs them against a stub
 WIRE.md                       the wire format, and how sure we are of each part
 ```
 
@@ -144,11 +147,17 @@ git grep -F "$(cat secrets/typesafe-api-key)" && echo LEAK
    change, even though no API changed, because their thresholds may need
    re-tuning.
 
+### A new example
+
+Put it in `examples/src/main/java/xyz/tcheeric/jev/examples/` with a `main`, add a
+case to `ExamplesIT` against the stub (including a failure path), and list it in
+`examples/README.md`. Run it live once before committing.
+
 ### A new question or answer type
 
 Add a record to the sealed `Question` or `Answer` interface. The compiler then
 points to every `switch` that must handle it. Update the codec, `WIRE.md`, the
-user guide and `NoDecisionHelpersTest.PUBLIC_SURFACE`.
+user guide, the examples and `NoDecisionHelpersTest.PUBLIC_SURFACE`.
 
 ## Consumers
 
@@ -172,9 +181,17 @@ mvn install -DskipTests
 - A change to a public type is `!` plus a `BREAKING CHANGE:` footer, and gets a
   `CHANGELOG.md` entry with migration steps.
 - The version is `${revision}` in the parent pom. Change it there only.
-  Deployment to `maven.398ja.xyz` is configured in the parent
-  `<distributionManagement>`. Credentials go in `~/.m2/settings.xml`, never in
-  the repository. The library has not been deployed yet.
+- `mvn deploy -DskipTests` publishes to `maven.398ja.xyz` through the parent
+  `<distributionManagement>`: snapshots to `/snapshots`, releases to `/releases`.
+  Credentials (server ids `reposilite-releases` and `reposilite-snapshots`) go
+  in `~/.m2/settings.xml`, never in the repository.
+- Only `jev-client` and the parent pom are deployed. `jev-client-it` and
+  `examples` set `maven.deploy.skip`.
+- Every `jev-client` build attaches `-sources.jar` and `-javadoc.jar`. Javadoc
+  runs with doclint and `failOnWarnings`, so a broken `{@link}` or bad HTML fails
+  `mvn verify`, not the release. Public types need a Javadoc comment that says
+  why, not what.
+- First published: `0.1.0-SNAPSHOT`, 25 September 2026.
 
 ## Design background
 

@@ -112,8 +112,8 @@ A missing name fails with `missing-answer`. Asking for the wrong type fails with
 | Answer | Fields |
 | --- | --- |
 | `Answer.Noul` | `probability()`: 0 to 1, the probability the answer is yes. **No confidence.** |
-| `Answer.Choice` | `chosen()`: the most likely option. `distribution()`: every option mapped to its probability. `confidence()`: 0 to 1. |
-| `Answer.Score` | `score()`: see below. `legend()`: level index to your description. `distribution()`: level index to probability. `confidence()`: 0 to 1. |
+| `Answer.Choice` | `chosen()`: the most likely option. `distribution()`: every option mapped to its probability, in the order the server sent them (not always the order you asked, so look options up by name). `confidence()`: 0 to 1. |
+| `Answer.Score` | `score()`: see below. `legend()`: level index to your description. `distribution()`: level index to probability. Both iterate lowest level first. `confidence()`: 0 to 1. |
 
 Also on `Evaluation`:
 

@@ -42,7 +42,15 @@ levels are evenly spaced.
 - `JevLiveIT`, run against the real API when `TYPESAFE_API_KEY` or
   `TYPESAFE_API_KEY_FILE` is set.
 
+- Sources and javadoc jars, published with the snapshot to `maven.398ja.xyz`.
+- `examples/` module (`Triage`, `QuestionTypes`), tested against a stub on every build.
+- MIT licence and `SECURITY.md`.
+
 ### Fixed
+
+- Score `legend()` and `distribution()` now iterate lowest level first, and a
+  choice's `distribution()` keeps the server's order. Both used to be copied with
+  `Map.copyOf`, which scrambled the order.
 
 - Endpoint `/v1/evaluate` changed to `/v1/systemone`.
 - Request and response `questions` / `answers` are maps, not arrays.
