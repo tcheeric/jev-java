@@ -319,14 +319,28 @@ class JevWireCodecTest {
 
     @Test
     void aValidationErrorListNamesEachOffendingField() {
-        // A 422 "details the offending field". If it arrives as a list of problems, each keeps
-        // its location so the caller can see which question was wrong.
+        // The 422 the live server returned on 25 September 2026 for a request with no state.
+        // Each problem keeps its location so the caller can see which field was wrong, and the
+        // echoed input is dropped because it would copy the caller's state into a log line.
         JevApiException error = codec.decodeError(422, """
-                {"detail":[{"loc":["body","questions","q","criteria"],"msg":"field required"}]}
+                {"detail":[{"type":"missing","loc":["body","state"],"msg":"Field required",
+                            "input":{"questions":{},"model":"jev-1.13.0"}}]}
                 """, NO_HEADERS);
 
         assertThat(error.apiErrorType()).isEqualTo("validation_error");
-        assertThat(error.apiMessage()).isEqualTo("body.questions.q.criteria: field required");
+        assertThat(error.apiMessage()).isEqualTo("body.state: Field required");
+    }
+
+    @Test
+    void aBareStringDetailIsUsedAsTheMessage() {
+        // Observed live as a 400 for a noul with neither instructions nor criteria. Without this
+        // case the server's explanation would be buried in an "unparseable" raw body.
+        JevApiException error = codec.decodeError(400, """
+                {"detail":"Noul question must have criteria or instructions: q"}
+                """, NO_HEADERS);
+
+        assertThat(error.status()).isEqualTo(400);
+        assertThat(error.apiMessage()).isEqualTo("Noul question must have criteria or instructions: q");
     }
 
     @Test

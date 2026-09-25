@@ -3,7 +3,6 @@ package xyz.tcheeric.jev.it;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import xyz.tcheeric.jev.Answer;
 import xyz.tcheeric.jev.Evaluation;
 import xyz.tcheeric.jev.JevApiException;
@@ -12,11 +11,16 @@ import xyz.tcheeric.jev.JevConfig;
 import xyz.tcheeric.jev.ModelCard;
 import xyz.tcheeric.jev.Question;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The client against the real evaluator. This is the test the first cut of the library could
@@ -24,29 +28,57 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * API. The stub ITs prove the client speaks the format as documented; this one proves the
  * documentation and the client agree with the server.
  *
- * <p>It runs only when {@code TYPESAFE_API_KEY} is set, the variable the official SDKs read, so
- * a build without a key still passes and never spends money. It asserts shapes and invariants,
- * never particular probabilities, because the model's answers are not this library's to pin.
- * {@code TYPESAFE_BASE_URL} overrides the endpoint, as it does for the SDKs.</p>
+ * <p>The key comes from {@code TYPESAFE_API_KEY}, the variable the official SDKs read, or else
+ * from the file named by {@code TYPESAFE_API_KEY_FILE}, so a key kept in a git-ignored file never
+ * has to be pasted into a shell. With neither set, every test is skipped, so a build without a
+ * key still passes and never spends money. The key is read here, in the test harness, and not by
+ * the library, whose callers each load their own secret and hand it to {@link JevConfig}.</p>
+ *
+ * <p>The tests assert shapes and invariants, never particular probabilities, because the model's
+ * answers are not this library's to pin. {@code TYPESAFE_BASE_URL} overrides the endpoint, as it
+ * does for the SDKs.</p>
  */
-@EnabledIfEnvironmentVariable(named = "TYPESAFE_API_KEY", matches = ".+")
 class JevLiveIT {
+
+    private static final String API_KEY = apiKey();
 
     private JevClient client;
 
+    private static String apiKey() {
+        String key = System.getenv("TYPESAFE_API_KEY");
+        if (key != null && !key.isBlank()) {
+            return key.strip();
+        }
+        String file = System.getenv("TYPESAFE_API_KEY_FILE");
+        if (file == null || file.isBlank()) {
+            return null;
+        }
+        try {
+            return Files.readString(Path.of(file)).strip();
+        } catch (IOException e) {
+            // A configured but unreadable key file is a broken setup, not a reason to skip, so
+            // it fails loudly. The path is named; the contents never are.
+            throw new UncheckedIOException("cannot read TYPESAFE_API_KEY_FILE at " + file, e);
+        }
+    }
+
     @BeforeEach
     void connect() {
+        assumeTrue(API_KEY != null && !API_KEY.isBlank(),
+                "set TYPESAFE_API_KEY or TYPESAFE_API_KEY_FILE to run against the real evaluator");
         String baseUrl = System.getenv("TYPESAFE_BASE_URL");
         JevConfig config = (baseUrl == null || baseUrl.isBlank()
-                ? JevConfig.of(System.getenv("TYPESAFE_API_KEY"))
-                : JevConfig.of(java.net.URI.create(baseUrl), System.getenv("TYPESAFE_API_KEY")))
+                ? JevConfig.of(API_KEY)
+                : JevConfig.of(java.net.URI.create(baseUrl), API_KEY))
                 .withRequestTimeout(Duration.ofSeconds(30));
         client = new JevClient(config);
     }
 
     @AfterEach
     void close() {
-        client.close();
+        if (client != null) {
+            client.close();
+        }
     }
 
     @Test
@@ -110,13 +142,15 @@ class JevLiveIT {
     void aModelTheEvaluatorDoesNotServeIsRejectedWithAClientErrorTheCodecCanRead() {
         // Every malformed question is refused by the client before it is sent, so an unknown
         // model is the one validation failure that can be provoked through the public API. The
-        // status is not pinned because the reference does not say which 4xx this is.
-        try (JevClient unknownModel = new JevClient(JevConfig.of(System.getenv("TYPESAFE_API_KEY"))
+        // reference does not list 400 at all; this pins what the server actually does.
+        try (JevClient unknownModel = new JevClient(JevConfig.of(API_KEY)
                 .withModel("jev-0.0.0-does-not-exist"))) {
             assertThatThrownBy(() -> unknownModel.evaluate("state", new Question.Noul("q", "true?")))
                     .isInstanceOfSatisfying(JevApiException.class, e -> {
-                        assertThat(e.status()).isBetween(400, 499);
-                        assertThat(e.apiErrorType()).isNotEqualTo("unparseable");
+                        // Observed 25 September 2026: 400 api_usage_error "Unknown model: ...".
+                        assertThat(e.status()).isEqualTo(400);
+                        assertThat(e.apiErrorType()).isEqualTo("api_usage_error");
+                        assertThat(e.apiMessage()).contains("jev-0.0.0-does-not-exist");
                     });
         }
     }

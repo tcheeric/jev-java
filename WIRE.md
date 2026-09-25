@@ -119,28 +119,36 @@ The reference lists statuses but does **not** document the error body.
 
 | Status | Meaning | Client behaviour |
 | --- | --- | --- |
+| 400 | unknown model, unknown question type, or a question the server rejects (observed live, not in the reference) | not retried |
 | 401 | invalid API key | not retried |
 | 403 | missing API key (observed live, not in the reference) | not retried |
-| 422 | request failed validation | not retried |
+| 422 | request body failed schema validation, for example a missing `state` | not retried |
 | 429 | rate limited | retried with backoff, or `retry-after` |
 | 529 | overloaded | retried with backoff, or `retry-after` |
 | other | anything else | not retried |
 
-**Observed live** on 25 September 2026, for a missing key (403) and an invalid key (401):
+Every error seen live on 25 September 2026 carried an `x-typesafe-request-id`
+header and a `detail` envelope, in one of three shapes:
 
 ```json
-{ "detail": { "error_type": "authentication_error", "message": "Cannot authenticate with the server. ..." } }
+401/403: { "detail": { "error_type": "authentication_error", "message": "Cannot authenticate with the server. ..." } }
+400:     { "detail": { "error_type": "api_usage_error", "message": "Unknown model: jev-0.0.0-x" } }
+400:     { "detail": "Noul question must have criteria or instructions: q" }
+422:     { "detail": [ { "type": "missing", "loc": ["body", "state"], "msg": "Field required", "input": {...} } ] }
 ```
 
-with an `x-typesafe-request-id` header. `JevApiException` exposes `status()`,
-`apiErrorType()` (from `error_type`), `apiMessage()` and `requestId()`.
-
-**Inferred, not observed**: a 422 may carry `detail` as a list of
-`{"loc": [...], "msg": ...}` entries, the convention of the framework the
-`detail` envelope comes from. The codec joins these into
-`"body.questions.q.criteria: field required"`. A string `detail` is used as the
-message. Any other body, including HTML from a gateway, is kept whole with type
+`JevApiException` exposes `status()`, `apiErrorType()` (from `error_type`, or
+`validation_error` for the list form, or `unknown` for a bare string),
+`apiMessage()` and `requestId()`. The list form becomes `"body.state: Field required"`.
+Its `input` echo is dropped, because it would copy the caller's state into a log
+line. Any other body, including HTML from a gateway, is kept whole with type
 `unparseable`, so the status is never lost.
+
+Also observed: the server **accepts** a score with a single level and answers it
+with certainty (score 0.0, confidence 1.0), even though the reference says a score
+"should have at least two levels". The client still refuses one level, because an
+answer that cannot be anything else carries no information. The server also
+ignores an unknown `name` field inside a question body.
 
 The official SDKs retry 408 and every 5xx by default. This client retries only 429,
 529 and connection failures, as before: a client that retries every 5xx turns an
@@ -187,6 +195,15 @@ appears there.
 - `JevClientIT` / `JevClientRetryIT` run the client over HTTP against a WireMock
   stub that speaks this format, including 401/403/422/429/529, `retry-after` and
   the observed error body.
-- `JevLiveIT` runs against the real API when `TYPESAFE_API_KEY` is set
-  (`TYPESAFE_BASE_URL` optionally overrides the endpoint), under `mvn verify`.
-  Without a key it is skipped.
+- `JevLiveIT` runs against the real API under `mvn verify` when a key is
+  available, and is skipped otherwise. The key comes from `TYPESAFE_API_KEY` or,
+  failing that, from the file named by `TYPESAFE_API_KEY_FILE`.
+  `TYPESAFE_BASE_URL` optionally overrides the endpoint. Locally, the key lives in
+  the git-ignored `secrets/typesafe-api-key`, and the git-ignored `.env` points
+  at it:
+
+  ```sh
+  set -a; . ./.env; set +a; mvn verify
+  ```
+
+  On 25 September 2026 all five live tests passed against `jev-1.13.0`.
