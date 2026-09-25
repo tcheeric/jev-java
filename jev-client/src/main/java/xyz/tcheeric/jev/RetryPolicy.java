@@ -1,6 +1,7 @@
 package xyz.tcheeric.jev;
 
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * How hard, and how politely, to retry.
@@ -71,5 +72,24 @@ public record RetryPolicy(
         // a fleet of clients that failed together does not retry together.
         double jittered = capped * (1.0d - jitterFactor * randomFraction);
         return Duration.ofMillis((long) jittered);
+    }
+
+    /**
+     * The wait before the next attempt when the evaluator may have said how long to wait, or
+     * empty when the caller should stop retrying.
+     *
+     * <p>A wait the server asked for replaces the computed backoff, as the official SDKs do:
+     * the server knows when its rate window reopens and the client can only guess. It is used
+     * without jitter, since the server has already chosen the moment. A requested wait longer
+     * than {@link #maxBackoff()} ends the retries rather than being cut short, because retrying
+     * before the server said to only earns another 429, and the caller learns the requested wait
+     * from {@link JevApiException#requestedWait()} instead.</p>
+     */
+    public Optional<Duration> nextWait(int attempt, double randomFraction, Optional<Duration> serverAsked) {
+        if (serverAsked.isEmpty()) {
+            return Optional.of(backoffFor(attempt, randomFraction));
+        }
+        Duration asked = serverAsked.get();
+        return asked.compareTo(maxBackoff) > 0 ? Optional.empty() : Optional.of(asked);
     }
 }

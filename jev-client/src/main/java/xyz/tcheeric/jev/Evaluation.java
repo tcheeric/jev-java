@@ -10,11 +10,18 @@ import java.util.Map;
  * without casting. They retrieve; they do not judge. There is deliberately no method here that
  * counts answers, compares them, or turns one into a decision (ADR 0002): four consumers are
  * ranked for this library and each owns its own thresholds.</p>
+ *
+ * @param model the versioned model ID that actually answered, as the evaluator reported it. It is
+ *              kept so a consumer can record which model produced each answer it calibrated on.
  */
-public record Evaluation(Map<String, Answer> answers, Usage usage) {
+public record Evaluation(String model, Map<String, Answer> answers, Usage usage) {
 
     public Evaluation {
+        Names.require(model, "answering model");
         answers = Map.copyOf(answers);
+        if (usage == null) {
+            throw new JevException("read-answer", "malformed-response", "an evaluation must carry its usage");
+        }
     }
 
     public Answer.Noul noul(String name) {

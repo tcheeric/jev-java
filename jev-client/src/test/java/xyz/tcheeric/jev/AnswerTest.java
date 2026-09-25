@@ -23,7 +23,6 @@ class AnswerTest {
 
         assertThat(answer.probability()).isEqualTo(0.93d);
         assertThat(components).containsExactly("name", "probability");
-        assertThat(components).doesNotContain("confidence");
     }
 
     @Test
@@ -39,14 +38,17 @@ class AnswerTest {
     }
 
     @Test
-    void aScoreAnswerKeepsTheDistributionAcrossTheScalePoints() {
-        // A score is a distribution over the points of the scale, plus the point the evaluator
-        // settled on and how sure it is.
-        Answer.Score answer = new Answer.Score("severity",
-                Map.of(1, 0.05d, 2, 0.1d, 3, 0.15d, 4, 0.5d, 5, 0.2d), 4, 0.66d);
+    void aScoreAnswerCarriesAFractionalScoreItsLegendAndTheDistributionAcrossLevels() {
+        // The documented example: 1.05 on a three-level rubric lands between two levels, which
+        // an integer could not say. The legend maps each index back to the caller's words.
+        Answer.Score answer = new Answer.Score("frustration", 1.05d,
+                Map.of(0, "Calm", 1, "Frustrated", 2, "Very angry"),
+                Map.of(0, 0.0d, 1, 0.95d, 2, 0.05d), 0.92d);
 
-        assertThat(answer.distribution()).containsEntry(4, 0.5d).hasSize(5);
-        assertThat(answer.value()).isEqualTo(4);
+        assertThat(answer.score()).isEqualTo(1.05d);
+        assertThat(answer.legend()).containsEntry(1, "Frustrated");
+        assertThat(answer.distribution()).containsEntry(1, 0.95d).hasSize(3);
+        assertThat(answer.confidence()).isEqualTo(0.92d);
     }
 
     @Test
@@ -59,6 +61,13 @@ class AnswerTest {
     }
 
     @Test
+    void aNotANumberProbabilityIsRefusedRatherThanSlippingPastEveryComparison() {
+        // NaN fails every comparison, so a consumer's "p > 0.8" would silently be false forever.
+        assertThatThrownBy(() -> new Answer.Noul("is_spam", Double.NaN))
+                .isInstanceOf(JevException.class);
+    }
+
+    @Test
     void aChosenOptionMissingFromItsOwnDistributionIsRefused() {
         // An evaluator that names a winner absent from the distribution it just reported has
         // contradicted itself, and the caller should never see the contradiction.
@@ -68,11 +77,23 @@ class AnswerTest {
     }
 
     @Test
-    void aScoreValueMissingFromItsOwnDistributionIsRefused() {
-        // Same contradiction, on the score shape.
-        assertThatThrownBy(() -> new Answer.Score("severity", Map.of(1, 1.0d), 4, 0.5d))
+    void aScoreOutsideItsOwnLevelsIsRefused() {
+        // A weighted mean of level indices cannot leave the range of those indices. One that
+        // does is corrupt, and would skew any consumer that rescales it.
+        assertThatThrownBy(() -> new Answer.Score("s", 2.5d,
+                Map.of(0, "low", 1, "high"), Map.of(0, 0.5d, 1, 0.5d), 0.5d))
                 .isInstanceOf(JevException.class)
-                .hasMessageContaining("absent from the distribution");
+                .hasMessageContaining("outside its levels");
+    }
+
+    @Test
+    void aLegendThatDisagreesWithTheDistributionIsRefused() {
+        // A level with a probability but no description, or the reverse, leaves the caller
+        // unable to say what the evaluator meant.
+        assertThatThrownBy(() -> new Answer.Score("s", 0.5d,
+                Map.of(0, "low"), Map.of(0, 0.5d, 1, 0.5d), 0.5d))
+                .isInstanceOf(JevException.class)
+                .hasMessageContaining("legend");
     }
 
     @Test

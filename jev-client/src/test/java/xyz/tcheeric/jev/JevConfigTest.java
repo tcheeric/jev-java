@@ -11,14 +11,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class JevConfigTest {
 
     @Test
-    void theDefaultModelIsPinnedToADatedVersion() {
+    void theDefaultModelIsPinnedToTheCurrentVersionedRelease() {
         // A consumer calibrates thresholds against a specific model. The default must therefore
-        // name a version that cannot change underneath it.
-        JevConfig config = JevConfig.of(URI.create("https://jev.example"), "token");
+        // name a version that cannot change underneath it, and one the API actually serves.
+        JevConfig config = JevConfig.of("token");
 
-        assertThat(config.model()).isEqualTo(JevConfig.DEFAULT_MODEL);
-        assertThat(config.model()).doesNotContain("latest");
-        assertThat(config.model()).matches(".*-\\d{8}$");
+        assertThat(config.model()).isEqualTo("jev-1.13.0");
+        assertThat(config.model()).matches("jev-\\d+\\.\\d+\\.\\d+");
+        assertThat(config.baseUri()).isEqualTo(URI.create("https://api.typesafe.ai"));
     }
 
     @Test
@@ -26,6 +26,15 @@ class JevConfigTest {
         // Pointing at an alias would let an upstream model swap silently change every answer a
         // consumer has already tuned against, so it fails immediately rather than in production.
         assertThatThrownBy(() -> JevConfig.of(URI.create("https://jev.example"), "token").withModel("jev-latest"))
+                .isInstanceOf(JevException.class)
+                .hasMessageContaining("pinned to a version");
+    }
+
+    @Test
+    void thePreviewAliasIsRefusedToo() {
+        // jev-preview moves ahead of jev-latest whenever a preview build ships, which makes it
+        // the more volatile of the two aliases, not an exception to the rule.
+        assertThatThrownBy(() -> JevConfig.of("token").withModel("jev-preview"))
                 .isInstanceOf(JevException.class)
                 .hasMessageContaining("pinned to a version");
     }

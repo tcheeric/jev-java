@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class JevClientRetryIT {
 
-    private static final String PATH = "/v1/evaluate";
+    private static final String PATH = "/v1/systemone";
     private static final String SCENARIO = "retries";
 
     private WireMockServer server;
@@ -96,7 +96,7 @@ class JevClientRetryIT {
         // A permanently rate-limited evaluator must not hold the caller hostage. Exactly
         // maxAttempts requests are made and then the client gives up, saying why.
         server.stubFor(post(urlEqualTo(PATH)).willReturn(aResponse().withStatus(429)
-                .withBody("{\"error\":{\"type\":\"rate_limit_error\",\"message\":\"slow down\"}}")));
+                .withBody("{\"detail\":{\"error_type\":\"rate_limit_error\",\"message\":\"slow down\"}}")));
         RetryPolicy policy = new RetryPolicy(3, Duration.ofMillis(50), 2.0d, Duration.ofSeconds(1), 0.0d);
 
         try (JevClient client = clientWith(policy)) {
@@ -107,6 +107,48 @@ class JevClientRetryIT {
         }
 
         server.verify(3, postRequestedFor(urlEqualTo(PATH)));
+    }
+
+    @Test
+    void aRetryAfterHeaderIsHonouredInPlaceOfTheComputedBackoff() {
+        // The server says "wait 700 ms" while the policy alone would wait 50 ms. The second
+        // request must not arrive before the server said it could.
+        server.stubFor(post(urlEqualTo(PATH)).inScenario(SCENARIO)
+                .whenScenarioStateIs(com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED)
+                .willReturn(aResponse().withStatus(429).withHeader("retry-after-ms", "700")
+                        .withBody("{\"detail\":{\"error_type\":\"rate_limit_error\",\"message\":\"slow down\"}}"))
+                .willSetStateTo("open"));
+        server.stubFor(post(urlEqualTo(PATH)).inScenario(SCENARIO).whenScenarioStateIs("open")
+                .willReturn(JevClientIT.okBody(JevClientIT.noulBody(0.5d))));
+        RetryPolicy policy = new RetryPolicy(3, Duration.ofMillis(50), 2.0d, Duration.ofSeconds(5), 0.0d);
+
+        List<Long> arrivals;
+        try (JevClient client = clientWith(policy)) {
+            client.evaluate("state", new Question.Noul("q", "true?"));
+            arrivals = arrivalTimes();
+        }
+
+        assertThat(arrivals.get(1) - arrivals.get(0)).isGreaterThanOrEqualTo(650L);
+    }
+
+    @Test
+    void aRetryAfterLongerThanTheCapStopsAtOnceAndTellsTheCallerHowLongTheServerWanted() {
+        // Holding the caller for an hour, or retrying early into another 429, are both wrong.
+        // One request is made and the requested wait reaches the caller on the cause.
+        server.stubFor(post(urlEqualTo(PATH)).willReturn(aResponse().withStatus(429).withHeader("retry-after", "3600")
+                .withBody("{\"detail\":{\"error_type\":\"rate_limit_error\",\"message\":\"slow down\"}}")));
+        RetryPolicy policy = new RetryPolicy(4, Duration.ofMillis(50), 2.0d, Duration.ofSeconds(5), 0.0d);
+
+        try (JevClient client = clientWith(policy)) {
+            assertThatThrownBy(() -> client.evaluate("state", new Question.Noul("q", "true?")))
+                    .isInstanceOf(JevException.class)
+                    .hasMessageContaining("retry-after-exceeds-backoff")
+                    .cause()
+                    .isInstanceOfSatisfying(JevApiException.class,
+                            e -> assertThat(e.requestedWait()).contains(Duration.ofHours(1)));
+        }
+
+        server.verify(1, postRequestedFor(urlEqualTo(PATH)));
     }
 
     @Test
@@ -157,7 +199,7 @@ class JevClientRetryIT {
             server.stubFor(post(urlEqualTo(PATH)).inScenario(SCENARIO)
                     .whenScenarioStateIs(state)
                     .willReturn(aResponse().withStatus(failures[i])
-                            .withBody("{\"error\":{\"type\":\"rate_limit_error\",\"message\":\"slow down\"}}"))
+                            .withBody("{\"detail\":{\"error_type\":\"rate_limit_error\",\"message\":\"slow down\"}}"))
                     .willSetStateTo(next));
             state = next;
         }

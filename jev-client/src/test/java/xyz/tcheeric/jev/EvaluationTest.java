@@ -10,10 +10,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EvaluationTest {
 
-    private final Evaluation evaluation = new Evaluation(Map.of(
+    private final Evaluation evaluation = new Evaluation("jev-1.13.0", Map.of(
             "is_spam", new Answer.Noul("is_spam", 0.9d),
             "intent", new Answer.Choice("intent", Map.of("refund", 0.8d, "sales", 0.2d), "refund", 0.7d)),
-            new Usage(10L, 5L, 15L));
+            new Usage(10L, 5L));
 
     @Test
     void aCallerRetrievesEachAnswerByTheNameItGaveTheQuestion() {
@@ -59,6 +59,6 @@ class EvaluationTest {
                 .toList();
 
         assertThat(methods).containsExactlyInAnyOrder(
-                "answers", "usage", "noul", "choice", "score", "equals", "hashCode", "toString");
+                "model", "answers", "usage", "noul", "choice", "score", "equals", "hashCode", "toString");
     }
 }

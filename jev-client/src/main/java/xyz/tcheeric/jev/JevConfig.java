@@ -18,11 +18,14 @@ public record JevConfig(
         RetryPolicy retryPolicy) {
 
     /**
-     * A pinned, dated model. A moving alias such as {@code jev-latest} is refused, because an
-     * upstream model swap would silently change answers a consumer has already calibrated
-     * thresholds against.
+     * A pinned, versioned model. The moving aliases {@code jev-latest} and {@code jev-preview}
+     * are refused, because an upstream release would silently change answers a consumer has
+     * already calibrated thresholds against. The API's own docs give the same advice to anyone
+     * who has tuned confidence thresholds.
      */
-    public static final String DEFAULT_MODEL = "jev-1-20260101";
+    public static final String DEFAULT_MODEL = "jev-1.13.0";
+
+    public static final URI DEFAULT_BASE_URI = URI.create("https://api.typesafe.ai");
 
     public static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
@@ -34,7 +37,8 @@ public record JevConfig(
             throw new JevException("configure", "invalid-argument", "an api token is required");
         }
         Names.require(model, "model");
-        if (model.endsWith("-latest") || model.equals("latest")) {
+        if (model.endsWith("-latest") || model.equals("latest")
+                || model.endsWith("-preview") || model.equals("preview")) {
             throw new JevException("configure", "invalid-argument",
                     "the model must be pinned to a version, not a moving alias: " + model);
         }
@@ -49,6 +53,13 @@ public record JevConfig(
 
     public static JevConfig of(URI baseUri, String apiToken) {
         return new JevConfig(baseUri, apiToken, DEFAULT_MODEL, DEFAULT_REQUEST_TIMEOUT, RetryPolicy.defaults());
+    }
+
+    /**
+     * The public evaluator at {@link #DEFAULT_BASE_URI}.
+     */
+    public static JevConfig of(String apiToken) {
+        return of(DEFAULT_BASE_URI, apiToken);
     }
 
     public JevConfig withModel(String model) {

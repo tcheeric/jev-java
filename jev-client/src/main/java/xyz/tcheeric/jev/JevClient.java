@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.ReentrantLock;
@@ -66,55 +67,78 @@ public final class JevClient implements AutoCloseable {
         requireOpen();
 
         String body = codec.encodeRequest(config.model(), state, List.copyOf(questions));
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(config.baseUri().toString().replaceAll("/+$", "") + codec.path()))
-                .timeout(config.requestTimeout())
-                .header("Authorization", "Bearer " + config.apiToken())
+        HttpRequest request = request(codec.path())
                 .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
-        return send(request);
+        return codec.decodeResponse(send(request, "evaluate"));
     }
 
     public Evaluation evaluate(String state, Question... questions) {
         return evaluate(state, List.of(questions));
     }
 
-    private Evaluation send(HttpRequest request) {
+    /**
+     * The model names the account may send. Aliases appear here too; this client still refuses
+     * them in {@link JevConfig}, so the list is for discovering the version an alias points at,
+     * not for choosing one at run time.
+     */
+    public List<ModelCard> models() {
+        requireOpen();
+        return codec.decodeModels(send(request(codec.modelsPath()).GET().build(), "list-models"));
+    }
+
+    private HttpRequest.Builder request(String path) {
+        return HttpRequest.newBuilder()
+                .uri(URI.create(config.baseUri().toString().replaceAll("/+$", "") + path))
+                .timeout(config.requestTimeout())
+                .header("Authorization", "Bearer " + config.apiToken())
+                .header("Accept", "application/json");
+    }
+
+    private String send(HttpRequest request, String operation) {
         RetryPolicy policy = config.retryPolicy();
         JevException last = null;
 
         for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
+            Optional<Duration> serverAsked = Optional.empty();
             try {
                 HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
                 int status = response.statusCode();
                 if (status == 200) {
-                    return codec.decodeResponse(response.body());
+                    return response.body();
                 }
-                JevApiException error = codec.decodeError(status, response.body());
+                JevApiException error = codec.decodeError(status, response.body(), response.headers());
                 if (!RetryPolicy.retryable(status)) {
                     throw error;
                 }
                 last = error;
+                serverAsked = error.requestedWait();
             } catch (IOException e) {
                 // A refused or dropped connection carries no evidence the evaluator saw the
                 // request, so it is retried on the same schedule as an explicit 429.
-                last = new JevException("evaluate", "connection-failed",
+                last = new JevException(operation, "connection-failed",
                         "could not reach the evaluator at " + config.baseUri(), e);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new JevException("evaluate", "interrupted",
-                        "the evaluation was interrupted while waiting for the evaluator", e);
+                throw new JevException(operation, "interrupted",
+                        "the request was interrupted while waiting for the evaluator", e);
             }
 
             if (attempt < policy.maxAttempts()) {
-                backoff(policy.backoffFor(attempt, ThreadLocalRandom.current().nextDouble()));
+                Optional<Duration> wait = policy.nextWait(attempt, ThreadLocalRandom.current().nextDouble(), serverAsked);
+                if (wait.isEmpty()) {
+                    throw new JevException(operation, "retry-after-exceeds-backoff",
+                            "the evaluator asked for a wait of " + serverAsked.orElseThrow()
+                                    + ", longer than the configured maxBackoff of " + policy.maxBackoff()
+                                    + ", after " + attempt + " attempt(s): " + last.getMessage(), last);
+                }
+                backoff(wait.get());
             }
         }
 
-        throw new JevException("evaluate", "retries-exhausted",
+        throw new JevException(operation, "retries-exhausted",
                 "gave up after " + policy.maxAttempts() + " attempts, last failure: " + last.getMessage(), last);
     }
 

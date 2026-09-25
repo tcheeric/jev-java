@@ -15,7 +15,7 @@ class NoDecisionHelpersTest {
 
     private static final List<Class<?>> PUBLIC_SURFACE = List.of(
             JevClient.class, JevConfig.class, JevWireCodec.class, RetryPolicy.class,
-            Evaluation.class, Usage.class,
+            Evaluation.class, Usage.class, ModelCard.class, JevApiException.class,
             Question.class, Question.Noul.class, Question.Choice.class, Question.Score.class,
             Answer.class, Answer.Noul.class, Answer.Choice.class, Answer.Score.class);
 

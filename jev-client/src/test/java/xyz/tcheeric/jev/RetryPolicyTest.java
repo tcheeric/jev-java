@@ -3,6 +3,7 @@ package xyz.tcheeric.jev;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -51,6 +52,28 @@ class RetryPolicyTest {
         assertThat(RetryPolicy.retryable(422)).isFalse();
         assertThat(RetryPolicy.retryable(500)).isFalse();
         assertThat(RetryPolicy.retryable(503)).isFalse();
+    }
+
+    @Test
+    void aWaitTheServerAskedForReplacesTheComputedBackoffAndIsNotJittered() {
+        // The server knows when its rate window reopens. Its wait is used as given, since
+        // shortening it with jitter would only earn another 429.
+        RetryPolicy policy = new RetryPolicy(4, Duration.ofMillis(100), 2.0d, Duration.ofSeconds(10), 0.5d);
+
+        assertThat(policy.nextWait(1, 1.0d, Optional.of(Duration.ofSeconds(3))))
+                .contains(Duration.ofSeconds(3));
+        assertThat(policy.nextWait(1, 0.0d, Optional.empty()))
+                .contains(Duration.ofMillis(100));
+    }
+
+    @Test
+    void aServerWaitLongerThanTheCapEndsTheRetriesRatherThanBeingCutShort() {
+        // A server asking for a minute while the caller allows ten seconds leaves two bad
+        // options: hold the caller for a minute, or retry early and be refused again. Stopping,
+        // and reporting the wait, is the honest one.
+        RetryPolicy policy = new RetryPolicy(4, Duration.ofMillis(100), 2.0d, Duration.ofSeconds(10), 0.0d);
+
+        assertThat(policy.nextWait(1, 0.0d, Optional.of(Duration.ofSeconds(60)))).isEmpty();
     }
 
     @Test
