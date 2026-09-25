@@ -14,6 +14,11 @@
     <name>Jev Client Integration Tests</name>
     <description>The client's HTTP boundary, tested against a stub server speaking the documented wire format. The library is never tested against a mock of itself.</description>
 
+    <properties>
+        <!-- Tests only: nothing here is for a consumer to depend on. -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>xyz.tcheeric</groupId>

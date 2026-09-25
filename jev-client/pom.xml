@@ -30,4 +30,46 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!--
+      Sources and javadoc jars are attached so a consumer's IDE shows the documentation,
+      and so the javadoc published with a release is the one built from the same commit.
+      Doclint runs on every build, which makes a broken link or an unknown tag a build
+      failure instead of a silent gap in the published pages.
+    -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar-no-fork</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>all,-missing</doclint>
+                    <failOnWarnings>true</failOnWarnings>
+                    <show>public</show>
+                    <windowtitle>jev-client ${project.version}</windowtitle>
+                    <doctitle>jev-client ${project.version}: a Java client for TypeSafe Jev</doctitle>
+                    <bottom>Released under the MIT License.</bottom>
+                    <links>
+                        <link>https://docs.oracle.com/en/java/javase/21/docs/api/</link>
+                    </links>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
