@@ -29,7 +29,9 @@ public sealed interface Answer permits Answer.Noul, Answer.Choice, Answer.Score 
     }
 
     /**
-     * @param distribution every option the question offered, mapped to its probability
+     * @param distribution every option the question offered, mapped to its probability, in the
+     *                     order the evaluator sent them. That is not always the order they were
+     *                     asked in, so look options up by name rather than by position.
      * @param chosen       the option the evaluator ranked highest
      */
     record Choice(String name, Map<String, Double> distribution, String chosen, double confidence)
@@ -47,7 +49,7 @@ public sealed interface Answer permits Answer.Noul, Answer.Choice, Answer.Score 
             }
             distribution.forEach((option, p) -> Names.requireProbability(p, "probability of option " + option));
             Names.requireProbability(confidence, "choice confidence");
-            distribution = Map.copyOf(distribution);
+            distribution = Names.orderedCopy(distribution);
         }
     }
 
@@ -61,8 +63,9 @@ public sealed interface Answer permits Answer.Noul, Answer.Choice, Answer.Score 
      * a consumer that wants a unit interval divides by that itself, since whether a linear
      * rescale is meaningful depends on how evenly it spaced its own levels.</p>
      *
-     * @param distribution each level index mapped to its probability
-     * @param legend       each level index mapped back to the description the evaluator was given
+     * @param distribution each level index mapped to its probability, lowest level first
+     * @param legend       each level index mapped back to the description the evaluator was given,
+     *                     lowest level first
      */
     record Score(String name, double score, Map<Integer, String> legend, Map<Integer, Double> distribution,
                  double confidence) implements Answer {
@@ -86,8 +89,8 @@ public sealed interface Answer permits Answer.Noul, Answer.Choice, Answer.Score 
                                 + lowest + ".." + highest);
             }
             Names.requireProbability(confidence, "score confidence");
-            legend = Map.copyOf(legend);
-            distribution = Map.copyOf(distribution);
+            legend = Names.orderedCopy(new java.util.TreeMap<>(legend));
+            distribution = Names.orderedCopy(new java.util.TreeMap<>(distribution));
         }
     }
 }

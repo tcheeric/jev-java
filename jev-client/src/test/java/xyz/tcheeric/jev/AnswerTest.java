@@ -97,6 +97,43 @@ class AnswerTest {
     }
 
     @Test
+    void scoreLevelsIterateLowestFirstWhateverOrderTheyArrivedIn() {
+        // Found running the QuestionTypes example against the live API: Map.copyOf scrambled the
+        // rubric, so levels printed as 2, 3, 0, 1. The values were right; the reading was not.
+        Map<Integer, String> legend = new java.util.LinkedHashMap<>();
+        legend.put(2, "Good fit");
+        legend.put(0, "No fit");
+        legend.put(3, "Excellent fit");
+        legend.put(1, "Weak fit");
+        Map<Integer, Double> distribution = new java.util.LinkedHashMap<>();
+        distribution.put(3, 0.15d);
+        distribution.put(1, 0.08d);
+        distribution.put(0, 0.0d);
+        distribution.put(2, 0.77d);
+
+        Answer.Score answer = new Answer.Score("fit", 2.07d, legend, distribution, 0.76d);
+
+        assertThat(answer.legend().keySet()).containsExactly(0, 1, 2, 3);
+        assertThat(answer.distribution().keySet()).containsExactly(0, 1, 2, 3);
+    }
+
+    @Test
+    void choiceOptionsKeepTheOrderTheEvaluatorListedThem() {
+        // Reordering again would make the printed order depend on hashing as well as on the
+        // server. The live server sends options in its own order, not the order asked, which is
+        // why callers are told to look options up by name.
+        Map<String, Double> distribution = new java.util.LinkedHashMap<>();
+        distribution.put("junior", 0.0d);
+        distribution.put("mid", 0.1d);
+        distribution.put("senior", 0.8d);
+        distribution.put("staff", 0.1d);
+
+        Answer.Choice answer = new Answer.Choice("seniority", distribution, "senior", 0.7d);
+
+        assertThat(answer.distribution().keySet()).containsExactly("junior", "mid", "senior", "staff");
+    }
+
+    @Test
     void aChoiceDistributionIsUnmodifiableOnceHandedToTheCaller() {
         // One consumer must not be able to edit an answer another consumer is reading.
         Answer.Choice answer = new Answer.Choice("intent", Map.of("a", 0.5d, "b", 0.5d), "a", 0.5d);

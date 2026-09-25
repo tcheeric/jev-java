@@ -31,6 +31,14 @@ final class Names {
     }
 
     /**
+     * An unmodifiable copy that keeps iteration order. {@code Map.copyOf} would scramble it, and a
+     * rubric printed as levels 2, 3, 0, 1 reads as nonsense even though no value is wrong.
+     */
+    static <K, V> Map<K, V> orderedCopy(Map<K, V> map) {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(map));
+    }
+
+    /**
      * Checks that an instruction or criterion is something the API accepts (a string, an object
      * or an array, per the published reference) and returns a deep, unmodifiable copy of it.
      *
