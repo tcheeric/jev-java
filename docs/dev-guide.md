@@ -13,8 +13,8 @@ Its module-boundary table describes the support agent's modules, not these.
 
 ## Build
 
-Requirements: JDK 21, Maven 3.9+, and network access to `maven.398ja.xyz` the
-first time (it hosts `imani-bom`, which manages every external version).
+Requirements: JDK 21 and Maven 3.9+. Every dependency comes from Maven Central.
+The build needs nothing from the Imani stack.
 
 | Command | Runs |
 | --- | --- |
@@ -29,7 +29,7 @@ Add `-o` to work offline once the dependencies are cached.
 ## Layout
 
 ```
-pom.xml                       reactor: ${revision}, imani-bom import, plugin versions
+pom.xml                       reactor: ${revision}, every dependency and plugin version
 jev-client/                   the library, package xyz.tcheeric.jev
   Question, Answer            sealed interfaces over records: the three types each
   Evaluation, Usage,          what one call returns
@@ -62,7 +62,26 @@ think a rule is wrong, say so and stop.
 | The API key never appears in `toString` or in a message | Constitution VII | `JevConfigTest` |
 | Only 429, 529 and connection failures are retried | Retrying a "no" only spends the caller's rate limit | `RetryPolicyTest`, `JevClientIT` |
 | `ReentrantLock`, never `synchronized`. Virtual-thread executor for HTTP | Constitution VI, to avoid pinning | Review |
-| No literal version in any pom | Constitution, dependency rule | Review. Versions live in parent `<properties>` or `imani-bom` |
+| No literal version in any pom | Constitution, dependency rule | Review. Every version is a property in the parent pom |
+| No dependency on `imani-bom` or any other Imani artifact | The library is standalone (ADR 0003). A consumer must not need the Imani stack, and a bump made for another service must not move this library's dependencies | `maven-enforcer-plugin` `bannedDependencies`, on every build |
+| Dependency versions converge | A transitive upgrade must be a visible choice | `maven-enforcer-plugin` `dependencyConvergence` |
+
+### Dependency versions
+
+The parent pom pins each external version once, as a property, against the
+library's own upstream BOM where one exists:
+
+| Property | Manages |
+| --- | --- |
+| `jackson.version` | `jackson-bom`, the only runtime dependency. It also pins `jackson-annotations`, which versions separately (2.21 alongside 2.21.5) |
+| `junit.version` | `junit-bom` (tests) |
+| `assertj.version` | `assertj-core` (tests) |
+| `wiremock.version` | `wiremock-standalone` (tests and examples) |
+
+To upgrade one, change its property and run `mvn clean verify`. The enforcer
+fails the build if versions no longer converge. The versions were those
+`imani-bom` 0.1.110 supplied when this repository was decoupled from it, so
+the switch changed no resolved version.
 
 `NoDecisionHelpersTest` matches name **fragments**, so an innocent name can trip
 it. `waitBefore` became `nextWait`, and the exception's `retryAfter()` became

@@ -19,7 +19,7 @@ Java side.
 ## Setup
 
 Requirements: Java 21, Jackson databind 2.10 or later on the classpath (the
-build is tested with the version `imani-bom` manages, 2.21), and a TypeSafe API
+library is built and tested with 2.21.5), and a TypeSafe API
 key from the [console](https://console.typesafe.ai). An older Jackson fails at
 the first response with `NoSuchMethodError: JsonNode.isEmpty()`.
 

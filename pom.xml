@@ -33,7 +33,17 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <imani-bom.version>0.1.110</imani-bom.version>
+        <!--
+          Every external version is pinned here, against its upstream BOM, and nothing is
+          inherited from another project's BOM. jev-client is a standalone library (ADR 0003),
+          so a consumer must be able to build and depend on it without the Imani stack, and a
+          version bump made for some other Imani service must not change this library's
+          dependencies underneath it.
+        -->
+        <jackson.version>2.21.5</jackson.version>
+        <junit.version>5.12.2</junit.version>
+        <assertj.version>3.27.4</assertj.version>
+        <wiremock.version>3.9.2</wiremock.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
@@ -44,17 +54,30 @@
         <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
         <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
         <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
-        <wiremock.version>3.9.2</wiremock.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>xyz.tcheeric</groupId>
-                <artifactId>imani-bom</artifactId>
-                <version>${imani-bom.version}</version>
+                <!-- Also pins jackson-annotations, which versions separately (2.21, not 2.21.5). -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>xyz.tcheeric</groupId>
@@ -62,10 +85,9 @@
                 <version>${project.version}</version>
             </dependency>
             <!--
-              The standalone (shaded) artifact rather than the plain one: imani-bom manages
-              Jetty to 12, WireMock 3.9.2 needs Jetty 11, and the import wins on the
-              transitive dependency, leaving the stub server unable to start. The shaded jar
-              carries its own Jetty and so is immune to that management.
+              The standalone (shaded) artifact rather than the plain one. It carries its own
+              Jetty 11 and Jackson, so it cannot clash with the Jackson the library uses, or with
+              a consumer that manages Jetty to 12 and builds the examples inside its own reactor.
             -->
             <dependency>
                 <groupId>org.wiremock</groupId>
@@ -125,6 +147,38 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <!--
+              Keeps the decoupling from imani-bom structural rather than a matter of review: no
+              module may depend on an Imani artifact other than this reactor's own, and every
+              dependency version must converge, so a transitive upgrade cannot slip in unseen.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>standalone</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>xyz.tcheeric</exclude>
+                                    </excludes>
+                                    <includes>
+                                        <include>xyz.tcheeric:jev-client</include>
+                                    </includes>
+                                    <message>jev-java is standalone (ADR 0003): it must not depend on imani-bom or any other Imani artifact.</message>
+                                </bannedDependencies>
+                                <dependencyConvergence/>
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>flatten-maven-plugin</artifactId>

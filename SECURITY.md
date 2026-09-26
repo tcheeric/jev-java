@@ -83,7 +83,7 @@ sleep indefinitely.
 
 ## Dependencies
 
-The library's only runtime dependency is Jackson databind, whose version is
-managed by `imani-bom`. It uses Jackson only for the tree model, never for
+The library's only runtime dependency is Jackson databind, pinned in the parent
+pom through `jackson-bom`. It uses Jackson only for the tree model, never for
 polymorphic or default typing. Questions accept only strings, maps, lists,
 numbers, booleans and nulls, so no caller object is serialized by reflection.

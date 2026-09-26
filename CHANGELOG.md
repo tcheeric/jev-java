@@ -7,6 +7,14 @@ follows [Semantic Versioning](https://semver.org/). The version is the reactor
 
 ## [Unreleased]
 
+### Changed
+
+- The build no longer imports `imani-bom`. Each dependency version is pinned in
+  the parent pom against its upstream BOM (`jackson-bom`, `junit-bom`), and the
+  enforcer rejects any Imani artifact. No resolved version changed: Jackson is
+  still 2.21.5, with annotations at 2.21. Consumers see no difference except
+  that jev-client no longer needs anything from the Imani stack.
+
 ## [0.1.0] - 2026-09-25
 
 The first release. Before it, `0.1.0-SNAPSHOT` went through a breaking rewrite,
